@@ -19,6 +19,10 @@ private:
 	juce::TextButton loadButton{ "Load File "};
 	juce::TextButton restartButton{ "Restart"};
 	juce::TextButton stopButton{ "Stop"};
+	juce::TextButton playPauseButton{ "Pause" };
+	juce::TextButton goToStartButton{ "Start" };
+	juce::TextButton goToEndButton{ "End" };
+
 	juce::Slider volumeSlider;
 	std::unique_ptr<juce::FileChooser> fileChooser;
 	// Event handlers
