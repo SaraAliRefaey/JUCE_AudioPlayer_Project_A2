@@ -13,6 +13,10 @@ public:
 	void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill);
 	void releaseResources();
 	void paint(juce::Graphics& g) override;
+ void buttonClicked(juce::Button* button) override;
+ void sliderValueChanged(juce::Slider* slider) override;
+	void infolabelSet(const juce::String& infoText);
+
 private:
 	PlayerAudio playerAudio;
 	// GUI elements
@@ -28,5 +32,9 @@ private:
 	// Event handlers
 	void buttonClicked(juce::Button* button) override;
 	void sliderValueChanged(juce::Slider* slider) override;
+juce::TextButton forwardButton{ "Skip Forward 10s" }, backwardButton{ "Skip Backward 10s" };
+juce::Label infolabel;
+bool isMuted = false;
+float previousGain = 0.5f;
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
 };
