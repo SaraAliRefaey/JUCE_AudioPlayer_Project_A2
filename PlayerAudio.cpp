@@ -23,29 +23,43 @@ void PlayerAudio::releaseResources()
 {
 	transportSource.releaseResources();
 }
-bool PlayerAudio::loadFile(const juce::File& file)
+bool PlayerAudio::loadFile(const juce::File& audioFile)
 {
-    if (file.existsAsFile())
-    {
-        if (auto* reader = formatManager.createReaderFor(file))
-        {
-            // ?? Disconnect old source first
-            transportSource.stop();
-            transportSource.setSource(nullptr);
-            readerSource.reset();
+    if (!audioFile.existsAsFile())
+        return false;
 
-            // Create new reader source
-            readerSource = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+    auto* reader = formatManager.createReaderFor(audioFile);
+    if (reader == nullptr)
+        return false; 
+    transportSource.stop();
+    transportSource.setSource(nullptr);
+    readerSource.reset();
 
-            // Attach safely
-            transportSource.setSource(readerSource.get(),
-                0,
-                nullptr,
-                reader->sampleRate);
-            transportSource.start();
-        }
-    }
+	readerSource.reset(new juce::AudioFormatReaderSource(reader, true));
+	transportSource.setSource(readerSource.get(), 0, nullptr, reader->sampleRate);
+    durationSeconds = reader->lengthInSamples / reader->sampleRate;
+    if (reader->metadataValues.containsKey("artist"))
+        artistName = reader->metadataValues["artist"];
+    else
+        artistName = "Unknown Artist";
+
+
     return true;
+}
+void PlayerAudio::skipForward()
+{
+    double currentPos = transportSource.getCurrentPosition();
+    double newPos = currentPos + 10.0;
+    if (newPos < transportSource.getLengthInSeconds())
+        transportSource.setPosition(newPos);
+}
+
+void PlayerAudio::skipBackward()
+{
+    double currentPos = transportSource.getCurrentPosition();
+    double newPos = currentPos - 10.0;
+    if (newPos < 0) newPos = 0;
+    transportSource.setPosition(newPos);
 }
 void PlayerAudio::start()
 {
@@ -71,4 +85,12 @@ double PlayerAudio::getLenght() const
 {
     return transportSource.getLengthInSeconds();
 }   
+juce::String PlayerAudio::getArtist() const
+{
+    return artistName;
+}
 
+double PlayerAudio::getDuration() const
+{
+    return durationSeconds;
+}
