@@ -25,7 +25,7 @@ class PlayerGUI : public juce::Component,
     public juce::Timer
 {
 public:
-	PlayerGUI();
+	PlayerGUI(PlayerAudio& player);
 	~PlayerGUI() override;
 	void resized() override;
 	void prepareToPlay(int samplesPerBlockExpected, double sampleRate);
@@ -33,7 +33,7 @@ public:
 	void releaseResources();
 	void paint(juce::Graphics& g) override;
 private:
-	PlayerAudio playerAudio;
+	PlayerAudio& playerAudio;
 	juce::TextButton loadButton{ "LOAD FILE "};
 	juce::TextButton restartButton{ "RESART"};
 	juce::TextButton stopButton{ "STOP"};
@@ -56,5 +56,10 @@ private:
 	void sliderValueChanged(juce::Slider* slider) override;
 	void timerCallback() override;
 	juce::String getTimeString(double seconds);
+juce::TextButton forwardButton{ ">>" }, backwardButton{ "<<" };
+juce::Label infolabel;
+bool isMuted = false;
+float previousGain = 0.5f;
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerGUI)
+
 };
