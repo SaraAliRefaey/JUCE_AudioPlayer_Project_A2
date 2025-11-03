@@ -7,9 +7,9 @@ class PlayerAudio {
 public:
     PlayerAudio();
     ~PlayerAudio();
-    void prepareToPlay(int samplesPerBlockExpected, double sampleRate) ;
-    void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) ;
-    void releaseResources() ;
+    void prepareToPlay(int samplesPerBlockExpected, double sampleRate)override ;
+    void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) override;
+    void releaseResources()override ;
     bool loadFile(const juce::File& file);
     void start();
     void replay();
@@ -24,6 +24,11 @@ public:
     bool isLooping() const;
     double getLoopStart() const;
     double getLoopEnd() const;
+ juce::String getArtist() const;
+ double getDuration() const;
+ void skipForward();
+ void skipBackward();
+
 
     struct Marker
     {
@@ -47,4 +52,9 @@ private:
     bool isLoopingEnabled = false;
     juce::Array<Marker> markers;
     int markerCount = 0;
+ juce::String artistName;
+ double durationSeconds = 0.0;
+
+ JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PlayerAudio)
+
 };
