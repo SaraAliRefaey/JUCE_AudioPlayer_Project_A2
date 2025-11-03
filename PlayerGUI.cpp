@@ -1,4 +1,8 @@
 #include"PlayerGUI.h"
+#include "PlayerGUI.h"
+#include "PlayerAudio.h"
+#include <JuceHeader.h>
+
 
 
 MarkerListBoxModel::MarkerListBoxModel(PlayerAudio& audio, juce::ListBox& lb, juce::TextButton& delBtn)
@@ -144,6 +148,16 @@ PlayerGUI::PlayerGUI() : markerListModel(playerAudio, markerListBox, deleteMarke
     markerListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF141D2B)); // Even darker list background
     markerListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(0xFF00BFA5).withAlpha(0.5f));
     addAndMakeVisible(markerListBox);
+	addAndMakeVisible(muteButton);
+addAndMakeVisible(infolabel);
+	  muteButton.setButtonText("Mute");
+	  muteButton.addListener(this);
+
+  addAndMakeVisible(forwardButton);
+  addAndMakeVisible(backwardButton);
+  forwardButton.onClick = [this] { audioPlayer.skipForward(); };
+  backwardButton.onClick = [this] { audioPlayer.skipBackward(); };
+
 
 	startTimer(40);
 	setSize(600, 350);
@@ -218,7 +232,17 @@ void PlayerGUI::buttonClicked(juce::Button* button)
                 auto file = fc.getResult();
                 if (file.existsAsFile())
                 {
-					playerAudio.loadFile(file);
+					bool ok =playerAudio.loadFile(file);
+					if (ok){
+						 juce::String info;
+ info << "Loaded file: " << file.getFileName() << "\n";
+
+ double totalSeconds = PlayerAudio.getDuration();
+ int hours = static_cast<int>(totalSeconds) / 3600;
+ int minutes = (static_cast<int>(totalSeconds) % 3600) / 60;
+ int seconds = static_cast<int>(totalSeconds) % 60;
+
+ juce::String durationString;
                 	double duration = playerAudio.getLenght();
 					positionSlider.setRange(0.0, duration, 0.01);
 					positionSlider.setValue(0.0);
@@ -226,26 +250,42 @@ void PlayerGUI::buttonClicked(juce::Button* button)
 					playerAudio.enableLooping(false);
 					toggleLoopButton.setButtonText("Loop OFF");
                     playerAudio.clearMarkers();
-                    markerListBox.updateContent();
+                    markerListBox.updateContent();    if (hours > 0)
+        durationString = juce::String::formatted("%02d:%02d:%02d", hours, minutes, seconds);
+    else
+        durationString = juce::String::formatted("%02d:%02d", minutes, seconds);
+
+    info << "Duration: " << durationString;
+    infolabelSet(info);
+}
+else
+{
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::WarningIcon,
+        "Load failed",
+        "Failed to open the selected audio file (unsupported format?)"
+    );
+						
                 }
+				}
             });
     }
 
-    if (button == &restartButton)
+   else if (button == &restartButton)
     {
         playerAudio.start();
     }
 
-    if (button == &stopButton)
+   else if (button == &stopButton)
     {
         playerAudio.stop();
         playerAudio.setPosition(0.0);
     }
-	if (button == &replayButton) {
+	 else if (button == &replayButton) {
 		playerAudio.replay();
 	}
 
-    if (button == &addMarkerButton)
+   else  if (button == &addMarkerButton)
     {
         if (playerAudio.getLenght() > 0.0)
         {
@@ -255,7 +295,7 @@ void PlayerGUI::buttonClicked(juce::Button* button)
         }
     }
 
-    if (button == &deleteMarkerButton)
+    else if (button == &deleteMarkerButton)
     {
         int selectedRow = markerListBox.getSelectedRow();
         if (selectedRow >= 0)
@@ -269,19 +309,19 @@ void PlayerGUI::buttonClicked(juce::Button* button)
 	double currentPos = playerAudio.getPosition();
 	double length = playerAudio.getLenght();
 
-	if (button == &setAButton && length > 0.0)
+	else if (button == &setAButton && length > 0.0)
 	{
 		double currentB = playerAudio.getLoopEnd();
 		playerAudio.setLoopPoints(currentPos, currentB);
 	}
 
-	if (button == &setBButton && length > 0.0)
+	 else if (button == &setBButton && length > 0.0)
 	{
 		double currentA = playerAudio.getLoopStart();
 		playerAudio.setLoopPoints(currentA, currentPos);
 	}
 
-	if (button == &toggleLoopButton)
+	else if (button == &toggleLoopButton)
 	{
 		bool newLoopState = !playerAudio.isLooping();
 		playerAudio.enableLooping(newLoopState);
@@ -291,6 +331,22 @@ void PlayerGUI::buttonClicked(juce::Button* button)
 			playerAudio.setPosition(playerAudio.getLoopStart());
 		}
 	}
+	    else if (button == &muteButton)
+    {
+        if (isMuted)
+        {
+            audioPlayer.setGain(previousGain);
+            muteButton.setButtonText("Mute");
+            isMuted = false;
+        }
+        else
+        {
+            previousGain = volumeSlider.getValue();
+            audioPlayer.setGain(0.0f);
+            muteButton.setButtonText("Unmute");
+            isMuted = true;
+        }
+    }
 
 }
 
@@ -337,4 +393,10 @@ void PlayerGUI::timerCallback()
 			toggleLoopButton.setButtonText("Loop OFF");
 		}
 	}
+
+}
+
+void PlayerGUI::infolabelSet(const juce::String& infoText)
+{
+    infolabel.setText(infoText, juce::dontSendNotification);
 }
