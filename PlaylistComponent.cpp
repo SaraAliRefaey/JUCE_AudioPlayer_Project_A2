@@ -1,110 +1,119 @@
 #include "PlaylistComponent.h"
-#include "JuceHeader.h"
 
-PlaylistComponent::PlaylistComponent(PlayerAudio& player) : audioPlayer(player)
+
+void PlaylistModel::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected)
 {
-    addAndMakeVisible(playlistBox);
-    addAndMakeVisible(removeButton);
-    addAndMakeVisible(addButton);
+    if (rowNumber < getNumRows())
+    {
+        auto track = playlist[rowNumber];
+        juce::String text = track.getFileName();
 
-    addButton.setButtonText("Add");
-    removeButton.setButtonText("Remove");
+        if (rowIsSelected)
+            g.fillAll(juce::Colour(0xFF757575).withAlpha(0.5f));
 
-    playlistBox.setModel(this);
-    addButton.addListener(this);
-    removeButton.addListener(this);
+        g.setColour(rowIsSelected ? juce::Colours::white : juce::Colours::lightgrey);
+        g.setFont(15.0f);
+        g.drawText(text, 10, 0, width - 20, height, juce::Justification::centredLeft);
+    }
 }
 
-PlaylistComponent::~PlaylistComponent()
+void PlaylistModel::selectedRowsChanged(int lastRowSelected)
 {
+    int selected = listBox->getSelectedRow();
+    if (selected >= 0 && selected < getNumRows())
+    {
+
+        player.loadFile(playlist[selected]);
+        player.start();
+    }
+}
+
+PlaylistComponent::PlaylistComponent(PlayerAudio& p) :
+    audioPlayer(p),
+    playlistModel(p)
+{
+    playlistModel.setListBox(&playlistListBox);
+    playlistListBox.setModel(&playlistModel);
+    playlistListBox.setRowHeight(30);
+    playlistListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF2C3E50));
+    addAndMakeVisible(playlistListBox);
+
+    for (auto* btn : { &addButton, &deleteButton, &clearButton })
+    {
+        addAndMakeVisible(btn);
+        btn->addListener(this);
+    }
 }
 
 void PlaylistComponent::paint(juce::Graphics& g)
 {
+    g.fillAll(juce::Colour(0xFF34495E));
+    g.setColour(juce::Colours::white);
+    g.setFont(18.0f);
+    g.drawText("Audio Playlist", 10, 5, getWidth() - 20, 20, juce::Justification::centredTop, true);
 }
 
 void PlaylistComponent::resized()
 {
-    juce::Rectangle<int> area = getLocalBounds();
-    playlistBox.setBounds(area.removeFromTop(area.getHeight() - 40));
-    addButton.setBounds(area.removeFromLeft(area.getWidth() / 2));
-    removeButton.setBounds(area);
+    auto area = getLocalBounds();
+    auto buttonArea = area.removeFromBottom(40).reduced(5);
+
+    addButton.setBounds(buttonArea.removeFromLeft(buttonArea.getWidth() / 3).reduced(5));
+    deleteButton.setBounds(buttonArea.removeFromLeft(buttonArea.getWidth() / 2).reduced(5));
+    clearButton.setBounds(buttonArea.reduced(5));
+
+    area.removeFromTop(30);
+    playlistListBox.setBounds(area.reduced(5));
 }
 
 void PlaylistComponent::buttonClicked(juce::Button* button)
 {
     if (button == &addButton)
     {
-        auto chooser = std::make_shared<juce::FileChooser>("Select audio files to add...",
-            juce::File{},
-            "*.wav;*.mp3;*.aiff");
+        auto chooser = std::make_shared<juce::FileChooser>(
+            "Add audio files to playlist...", juce::File{}, ".wav;.mp3;*.aiff");
 
-        chooser->launchAsync(juce::FileBrowserComponent::openMode
-            | juce::FileBrowserComponent::canSelectFiles
-            | juce::FileBrowserComponent::canSelectMultipleItems,
-            [this, chooser](const juce::FileChooser& fc)
+        chooser->launchAsync(
+
+            juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectMultipleItems,
+
+            [this, chooser](const juce::FileChooser& chooserResult)
             {
-                auto files = fc.getResults();
-                if (!files.isEmpty())
-                {
-                    for (auto& f : files)
-                        trackFiles.add(f);
 
-                    playlistBox.updateContent();
-                    repaint();
-                    DBG("Added " << files.size() << " files to playlist.");
-                }
-                else
+                if (chooserResult.getResults().size() > 0)
                 {
-                    DBG("FileChooser returned no files.");
+                    auto results = chooserResult.getResults();
+                    for (auto& file : results)
+                    {
+                        if (file.existsAsFile())
+                        {
+                            playlistModel.addTrack(file);
+                        }
+                    }
+                    playlistListBox.updateContent();
                 }
             });
     }
-    else if (button == &removeButton)
+    else if (button == &deleteButton)
     {
-        if (selectedTrackIndex >= 0 && selectedTrackIndex < trackFiles.size())
+        int selected = playlistListBox.getSelectedRow();
+        if (selected >= 0)
         {
-            trackFiles.remove(selectedTrackIndex);
-            selectedTrackIndex = -1;
-            playlistBox.updateContent();
-            DBG("Removed selected track.");
+            playlistModel.removeTrack(selected);
+            playlistListBox.updateContent();
         }
     }
-}
-
-// ListBoxModel methods
-int PlaylistComponent::getNumRows()
-{
-    return trackFiles.size();
-}
-
-void PlaylistComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected)
-{
-    if (rowIsSelected)
-        g.fillAll(juce::Colours::lightblue);
-
-    if (rowNumber >= 0 && rowNumber < trackFiles.size())
+    else if (button == &clearButton)
     {
-        juce::String fileName = trackFiles[rowNumber].getFileName();
-        g.setColour(juce::Colours::black);
-        g.drawText(fileName, 5, 0, width - 10, height, juce::Justification::centredLeft);
+        playlistModel.getPlaylist().clear();
+        playlistListBox.updateContent();
     }
 }
 
-void PlaylistComponent::listBoxItemClicked(int row, const juce::MouseEvent& e)
+juce::String PlaylistComponent::getTimeString(double seconds)
 {
-    selectedTrackIndex = row;
-
-    if (row >= 0 && row < trackFiles.size())
-    {
-        juce::File selectedFile = trackFiles[row];
-        audioPlayer.loadFile(selectedFile);
-        audioPlayer.play();
-    }
-}
-
-void PlaylistComponent::loadplaylistFromFiles(const juce::Array<juce::File>& files)
-{
-    trackFiles = files;
-    playlistBox.updateContent();
+    int totalSeconds = (int)seconds;
+    int minutes = totalSeconds / 60;
+    int secs = totalSeconds % 60;
+    return juce::String::formatted("%02d:%02d", minutes, secs);
 }
