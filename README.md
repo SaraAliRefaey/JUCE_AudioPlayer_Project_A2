@@ -11,7 +11,7 @@
 | :--- | :--- | :--- |
 | **Haneen Fouad Abo Al-Yazid** | 20240175 | 20240175@stud.fci-cu.edu.eg |
 | **Sara Ali Refaey Abdelhamed** | 20242148 | 20242148@stud.fci-cu.edu.eg |
-| **Sara Mohamed Salah El-Din** | 20242150 | 20242150@stud.fci-cu.edu.eg |
+| **Sarah Mohamed Salah El-Din** | 20242150 | 20242150@stud.fci-cu.edu.eg |
 
 ---
 
